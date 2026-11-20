@@ -1,11 +1,11 @@
-# NeonClipping one-click installer for Windows (PowerShell 5.1+, no admin needed).
-# What it does: checks your PC, installs what is missing (Python, FFmpeg), downloads NeonClipping, builds a private
+# ShortCircuit one-click installer for Windows (PowerShell 5.1+, no admin needed).
+# What it does: checks your PC, installs what is missing (Python, FFmpeg), downloads ShortCircuit, builds a private
 # Python environment, makes a desktop shortcut, starts the app and opens it in your browser.
-# Everything lands in one folder (default: %LOCALAPPDATA%\NeonClipping). Delete that folder to uninstall.
+# Everything lands in one folder (default: %LOCALAPPDATA%\ShortCircuit). Delete that folder to uninstall.
 # Plain text on purpose: you can read every line before you run it.
 param(
-    [string]$InstallDir = (Join-Path $env:LOCALAPPDATA 'NeonClipping'),
-    [string]$ZipUrl = 'https://github.com/iamajmeena/neonclipping/archive/refs/heads/main.zip',
+    [string]$InstallDir = (Join-Path $env:LOCALAPPDATA 'ShortCircuit'),
+    [string]$ZipUrl = 'https://github.com/Deb04201998/shortcircuit/archive/refs/heads/main.zip',
     [string]$SourceDir = '',          # developers: copy the app from a local folder instead of downloading
     [switch]$NoStart,                 # install only, do not start the app
     [switch]$Yes,                     # answer "yes" to the optional questions (GPU libraries, Ollama)
@@ -57,7 +57,7 @@ $log = Join-Path $InstallDir 'install.log'
 try { Start-Transcript -Path $log -Append | Out-Null } catch {}
 
 Write-Host ""
-Write-Host "  NEONCLIPPING SETUP" -ForegroundColor Magenta
+Write-Host "  SHORTCIRCUIT SETUP" -ForegroundColor Magenta
 Write-Host "  Paste a link, get captioned 9:16 clips. Free, local, open-source. By Ajay K Meena"
 Write-Host "  Install folder: $InstallDir"
 
@@ -120,15 +120,15 @@ try {
     }
 
     # ---- 3. the app
-    Step "Step 4/6 - NeonClipping app laa raha hoon"
+    Step "Step 4/6 - ShortCircuit app laa raha hoon"
     $app = Join-Path $InstallDir 'app'
     New-Item -ItemType Directory -Force -Path $app | Out-Null
     if ($SourceDir) {
         Get-ChildItem $SourceDir -Force | Where-Object { $_.Name -notin @('.venv', 'data', '__pycache__', '.git') } | ForEach-Object { Copy-Item $_.FullName $app -Recurse -Force }
     } else {
-        $zip = Join-Path $env:TEMP 'neonclipping-main.zip'
+        $zip = Join-Path $env:TEMP 'shortcircuit-main.zip'
         Download $ZipUrl $zip
-        $tmp = Join-Path $env:TEMP 'neonclipping-unpack'
+        $tmp = Join-Path $env:TEMP 'shortcircuit-unpack'
         if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
         Expand-Archive -Path $zip -DestinationPath $tmp -Force
         $root = Get-ChildItem $tmp -Directory | Select-Object -First 1
@@ -177,35 +177,35 @@ try {
 
     # ---- start script + desktop shortcut
     Step "Step 6/6 - Shortcut aur start"
-    $startBat = Join-Path $InstallDir 'Start-NeonClipping.bat'
+    $startBat = Join-Path $InstallDir 'Start-ShortCircuit.bat'
     $pathLine = if ($ffbin) { "set `"PATH=$ffbin;%PATH%`"" } else { 'rem FFmpeg already on PATH' }
     $bat = @(
         '@echo off',
-        'title NeonClipping (band karne ke liye ye window band karo)',
-        'if not defined NEONCLIPPING_PORT set NEONCLIPPING_PORT=8770',
+        'title ShortCircuit (band karne ke liye ye window band karo)',
+        'if not defined SHORTCIRCUIT_PORT set SHORTCIRCUIT_PORT=8770',
         $pathLine,
-        'powershell -NoProfile -Command "try{Invoke-WebRequest -UseBasicParsing http://127.0.0.1:%NEONCLIPPING_PORT%/healthz -TimeoutSec 2 | Out-Null; exit 0}catch{exit 1}"',
+        'powershell -NoProfile -Command "try{Invoke-WebRequest -UseBasicParsing http://127.0.0.1:%SHORTCIRCUIT_PORT%/healthz -TimeoutSec 2 | Out-Null; exit 0}catch{exit 1}"',
         'if %errorlevel%==0 (',
-        '  start "" http://127.0.0.1:%NEONCLIPPING_PORT%',
+        '  start "" http://127.0.0.1:%SHORTCIRCUIT_PORT%',
         '  exit /b 0',
         ')',
         "cd /d `"$app`"",
-        'start "" /min powershell -NoProfile -WindowStyle Hidden -Command "for($i=0;$i -lt 90;$i++){try{Invoke-WebRequest -UseBasicParsing http://127.0.0.1:$env:NEONCLIPPING_PORT/healthz -TimeoutSec 2 | Out-Null; Start-Process http://127.0.0.1:$env:NEONCLIPPING_PORT; break}catch{Start-Sleep 1}}"',
+        'start "" /min powershell -NoProfile -WindowStyle Hidden -Command "for($i=0;$i -lt 90;$i++){try{Invoke-WebRequest -UseBasicParsing http://127.0.0.1:$env:SHORTCIRCUIT_PORT/healthz -TimeoutSec 2 | Out-Null; Start-Process http://127.0.0.1:$env:SHORTCIRCUIT_PORT; break}catch{Start-Sleep 1}}"',
         "`"$venvPy`" app.py"
     )
     Set-Content -Path $startBat -Value $bat -Encoding ASCII
     if (-not $NoShortcut) { try {
         $desk = [Environment]::GetFolderPath('Desktop')
-        $sh = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $desk 'NeonClipping.lnk'))
-        $sh.TargetPath = $startBat; $sh.WorkingDirectory = $InstallDir; $sh.Description = 'NeonClipping - captioned 9:16 clips'; $sh.Save()
-        Ok "Desktop pe 'NeonClipping' shortcut ban gaya."
+        $sh = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $desk 'ShortCircuit.lnk'))
+        $sh.TargetPath = $startBat; $sh.WorkingDirectory = $InstallDir; $sh.Description = 'ShortCircuit - captioned 9:16 clips'; $sh.Save()
+        Ok "Desktop pe 'ShortCircuit' shortcut ban gaya."
     } catch { Warn "Desktop shortcut nahi ban paya. Start file: $startBat" } }
 
     Stop-Transcript | Out-Null
     Write-Host ""
     Write-Host "  SETUP COMPLETE" -ForegroundColor Green
     if ($NoShortcut) { Write-Host "  Agli baar: $startBat pe double-click karo, browser mein khul jayega (http://127.0.0.1:8770)." }
-    else { Write-Host "  Agli baar: Desktop pe 'NeonClipping' pe double-click karo, browser mein khul jayega (http://127.0.0.1:8770)." }
+    else { Write-Host "  Agli baar: Desktop pe 'ShortCircuit' pe double-click karo, browser mein khul jayega (http://127.0.0.1:8770)." }
     Write-Host "  Use: 1) video link paste karo  2) 'Make clips' dabao  3) clip dekho aur 'Download MP4' dabao."
     Write-Host $(if ($NoShortcut) { "  Uninstall: $InstallDir folder delete kar do." } else { "  Uninstall: $InstallDir folder aur Desktop shortcut delete kar do." })
     if (-not $NoStart) {

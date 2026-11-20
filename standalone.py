@@ -7,6 +7,7 @@ import shutil
 import time
 import subprocess
 import yt_dlp
+import mac_dl
 from fastapi import HTTPException
 from highlights import rank
 import smart
@@ -47,21 +48,24 @@ def attach(app,DATA,state,probe):
             except (OSError,ValueError,subprocess.SubprocessError):pass
         directory=DATA/job;directory.mkdir(exist_ok=True)
         target=DATA/(job+'.mp4')
-        def progress(event):
-            if event.get('status')=='downloading':
-                got=event.get('downloaded_bytes',0);total=event.get('total_bytes') or event.get('total_bytes_estimate') or 0
-                msg=f'Downloading 720p: {got/1048576:.1f} MB'+(f' / {total/1048576:.1f} MB' if total else '')
-                state[job].update(message=msg,stage=msg,progress=min(.3,got/total*.3) if total else .1)
-            elif event.get('status')=='finished':state[job].update(message='Merging source video',stage='Merging source video')
-        options={'noplaylist':True,'format':'best[height<=720][ext=mp4]/bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720]',
-                 'outtmpl':str(directory/'source.%(ext)s'),'merge_output_format':'mp4','socket_timeout':15,'retries':2,'fragment_retries':2,
-                 'extractor_retries':1,'progress_hooks':[progress],'quiet':True,'no_warnings':True}
-        with yt_dlp.YoutubeDL(options) as downloader:downloader.download([url])
+        # Long videos (streams, VODs) are fetched at 480p: the clip finder only needs the picture to find action, and a 2-hour
+        # 720p file is the single biggest cause of slow or stuck imports. Short videos keep 720p.
+        height=720
+        try:
+            with yt_dlp.YoutubeDL(mac_dl.info_opts(skip_download=True)) as probe_info:
+                if float(probe_info.extract_info(url,download=False).get('duration') or 0)>1800:height=480
+        except Exception:pass
+        def progress(mb,tries):
+            msg=f'Downloading {height}p: {mb:.0f} MB'+(f' (retry {tries-1})' if tries>1 else '')
+            state[job].update(message=msg,stage=msg,progress=min(.3,.02+mb/6000))
+        fmt=f'bv*[height<={height}][vcodec^=avc1]+ba[ext=m4a]/bv*[height<={height}]+ba/b[height<={height}]/b'
+        mac_dl.fetch(url,str(directory/'source.%(ext)s'),fmt=fmt,merge_mp4=True,on_progress=progress)
+        state[job].update(message='Preparing source video',stage='Preparing source video')
         src=next((p for p in directory.iterdir() if p.suffix in ('.mp4','.mkv','.webm')),None)
         if src is None:raise RuntimeError('Download produced no playable file. Upload the original MP4 instead.')
         if src.suffix=='.mp4':shutil.move(str(src),str(target))
         else:
-            result=subprocess.run(['ffmpeg','-y','-v','error','-i',str(src),'-c:v','libx264','-preset','fast','-crf','22','-c:a','aac','-movflags','+faststart',str(target)],capture_output=True,text=True,timeout=3600)
+            result=subprocess.run(['ffmpeg','-y','-v','error','-i',str(src),'-c:v','libx264','-preset','veryfast','-crf','22','-c:a','aac','-movflags','+faststart',str(target)],capture_output=True,text=True,timeout=3600)
             if result.returncode:raise RuntimeError(result.stderr[-500:])
         probe(target)
         (DATA/(job+'.request.json')).write_text(json.dumps({'url':url}),encoding='utf-8')

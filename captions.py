@@ -14,7 +14,7 @@ def _best_hindi():
     """large-v3 is clearly better at Hindi than distilled turbo, but on a 6 GB GPU shared with other apps it measured
     ~6 minutes for a 40 s clip (memory spill). Auto-use it only when 3.4 GB of GPU memory is really free."""
     try:
-        if os.environ.get('NEONCLIPPING_CPU')=='1':return ''
+        if os.environ.get('SHORTCIRCUIT_CPU')=='1':return ''
         free=int(subprocess.run(['nvidia-smi','--query-gpu=memory.free','--format=csv,noheader,nounits'],capture_output=True,text=True,timeout=5).stdout.split()[0])
         if free>=3400:return large_v3()
     except Exception:pass
@@ -36,7 +36,8 @@ def _load(WhisperModel,spec,data):
             free=int(subprocess.run(['nvidia-smi','--query-gpu=memory.free','--format=csv,noheader,nounits'],capture_output=True,text=True,timeout=5).stdout.split()[0])
         except Exception:free=0
         big=free<3400
-    if os.environ.get('NEONCLIPPING_CPU')!='1' and not big:
+    import platform
+    if os.environ.get('SHORTCIRCUIT_CPU')!='1' and not big and platform.system()!='Darwin':   # Macs have no CUDA: go straight to CPU int8
         try:
             m=WhisperModel(spec,device='cuda',compute_type='int8_float16',download_root=str(data/'models'))
             list(m.transcribe(__import__('numpy').zeros(16000,dtype='float32'))[0])   # prove cuDNN/cuBLAS really load

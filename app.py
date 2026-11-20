@@ -14,7 +14,7 @@ from captions import transcribe, large_v3, write as write_captions, ANIMS
 import styling
 import facecam_detect
 ROOT=Path(__file__).resolve().parent
-DATA=Path(os.environ.get('NEONCLIPPING_DATA_DIR',str(ROOT/'data'))).resolve();DATA.mkdir(parents=True,exist_ok=True)
+DATA=Path(os.environ.get('SHORTCIRCUIT_DATA_DIR',str(ROOT/'data'))).resolve();DATA.mkdir(parents=True,exist_ok=True)
 app=FastAPI()
 state={}
 def probe(p):
@@ -55,7 +55,7 @@ def text_file(id:str,kind:str):
  if not id.isalnum() or kind not in ('srt','ass'):raise HTTPException(404)
  p=DATA/(id+'.'+kind)
  if not p.exists():raise HTTPException(404)
- return FileResponse(p,filename='neonclipping-'+id+'.'+kind)
+ return FileResponse(p,filename='shortcircuit-'+id+'.'+kind)
 @app.get('/library')
 def library():
  records=[]
@@ -65,7 +65,7 @@ def library():
   try:
    j=json.loads(f.read_text());result=j.get('result',{})
    if result.get('status')=='done' and not j.get('superseded_by') and (DATA/(f.stem+'.mp4')).exists():
-    records.append({'id':f.stem,'title':j.get('settings',{}).get('title') or 'NeonClipping clip','created':f.stat().st_mtime,'meta':result.get('meta',{}),'settings':j.get('settings',{}),'srt':bool(result.get('srt')) and (DATA/(f.stem+'.srt')).exists(),**app.reedit_metadata(f.stem,j,groups)})
+    records.append({'id':f.stem,'title':j.get('settings',{}).get('title') or 'ShortCircuit clip','created':f.stat().st_mtime,'meta':result.get('meta',{}),'settings':j.get('settings',{}),'srt':bool(result.get('srt')) and (DATA/(f.stem+'.srt')).exists(),**app.reedit_metadata(f.stem,j,groups)})
   except (ValueError,OSError):pass
  return sorted(records,key=lambda j:j['created'],reverse=True)
 
@@ -138,7 +138,7 @@ def export(b:dict):
    state[job].update(message='Rendering vertical clip with '+style+' captions' if words else 'Rendering vertical clip')
    base=['ffmpeg','-y','-v','error','-ss',str(start),'-t',str(end-start),'-i',str(src),*(plan.inputs if plan else []),'-filter_complex',fc,'-map','[v]','-map',amap or '0:a?','-t',str(dur),'-c:a','aac','-b:a','160k','-movflags','+faststart']
    if fps:base+=['-r',str(fps),'-fps_mode','cfr']
-   for encoder in [['-c:v','h264_nvenc','-preset','p5','-cq','20'],['-c:v','libx264','-crf','20','-preset','fast']]:
+   for encoder in encoders.export():
     r=subprocess.run(base+encoder+['-pix_fmt','yuv420p',str(out)],capture_output=True,text=True,cwd=str(DATA))
     if r.returncode==0:break
    if r.returncode:raise RuntimeError(r.stderr[-900:])
@@ -149,8 +149,11 @@ def export(b:dict):
  threading.Thread(target=work,daemon=True).start();return {'job':job}
 PAD=4.0         # seconds fetched before a section: yt-dlp cuts on a keyframe, export trims exactly
 FAST_OVER=600   # seconds: longer videos go audio-first, short ones are downloaded whole
+import mac_dl,encoders
+mac_dl.self_update(DATA)
 def _yt(opts):
- return yt_dlp.YoutubeDL({'noplaylist':True,'quiet':True,'no_warnings':True,'socket_timeout':20,'retries':3,'fragment_retries':3,'concurrent_fragment_downloads':6,**opts})
+ # Metadata lookups only. Real downloads go through mac_dl.fetch(), which watches the process and retries stalls.
+ return yt_dlp.YoutubeDL(mac_dl.info_opts(**opts))
 def _dur(p):
  r=subprocess.run(['ffprobe','-v','error','-show_entries','format=duration','-of','csv=p=0',str(p)],capture_output=True,text=True,check=True);return float(r.stdout.strip())
 
@@ -232,12 +235,9 @@ def make(b:dict):
    W=learn.load_weights(DATA)
    def lowres_section(u,c):
     """A tiny 144p copy of just this candidate, only for looking at the action (motion, flashes, light strobes)."""
-    from yt_dlp.utils import download_range_func
     name='lr_'+uuid.uuid4().hex
-    with _yt({'format':'worst[ext=mp4]/bv*[height<=240][ext=mp4]/worst','outtmpl':str(DATA/(name+'.%(ext)s')),'merge_output_format':'mp4',
-              'download_ranges':download_range_func(None,[(max(0,c['start']),c['end'])])}) as y:y.download([u])
-    f=next(x for x in DATA.glob(name+'.*') if x.suffix not in ('.part','.ytdl'))
-    return f,0.0
+    files=mac_dl.fetch(u,str(DATA/(name+'.%(ext)s')),fmt='worst[ext=mp4]/bv*[height<=240][ext=mp4]/worst',sections=(max(0,c['start']),c['end']),merge_mp4=True)
+    return Path(files[0]),0.0
    def choose(pool_clips,locate):
     """Look at the action in the best candidates, re-rank with the learned weights, keep `count`."""
     K=min(len(pool_clips),count*2)
@@ -268,21 +268,19 @@ def make(b:dict):
     return top[:count]
    sections=None
    if fast:
-    def hook(d):
-     t=d.get('total_bytes') or d.get('total_bytes_estimate')
-     if t and d.get('status')=='downloading':save(job,{'stage':f"Downloading audio {d['downloaded_bytes']/1048576:.0f}/{t/1048576:.0f} MB",'progress':.02+.1*d['downloaded_bytes']/t})
-    with _yt({'format':'ba[ext=m4a]/ba/worst','outtmpl':str(DATA/(job+'.audio.%(ext)s')),'progress_hooks':[hook]}) as y:y.download([url])
+    def hook(mb,tries):
+     save(job,{'stage':f"Downloading audio {mb:.0f} MB"+(f" (retry {tries-1})" if tries>1 else ''),'progress':min(.11,.02+mb/4000)})
+    mac_dl.fetch(url,str(DATA/(job+'.audio.%(ext)s')),fmt='ba[ext=m4a]/ba/worst',on_progress=hook)
     p=next(f for f in DATA.glob(job+'.audio.*') if f.suffix not in ('.part','.ytdl'));duration=_dur(p);sid=job
     save(job,{'meta':{'duration':duration},'stage':'Finding moments in audio','progress':.12})
     found,engine=ai_found(moments,yt_words,duration) if moments else find(p,duration,count,max_len,lambda f,m:save(job,{'stage':m,'progress':.12+.4*f}),language,DATA,min_len,False,yt_words,False,W,False)
     found=choose(found,lambda c:lowres_section(url,c))
     save(job,{'engine':engine+' (audio-first)','stage':'Fetching only the chosen sections','progress':.58,'candidates':len(found)})
     from concurrent.futures import ThreadPoolExecutor
-    from yt_dlp.utils import download_range_func
     def section(i,c):
      name=uuid.uuid4().hex
-     with _yt({'format':'bv*[height<=720][vcodec^=avc1]+ba[ext=m4a]/bv*[height<=720]+ba/b[height<=720]/b','merge_output_format':'mp4','outtmpl':str(DATA/(name+'.%(ext)s')),
-               'download_ranges':download_range_func(None,[(max(0,c['start']-PAD),c['end']+1)])}) as y:y.download([url])
+     mac_dl.fetch(url,str(DATA/(name+'.%(ext)s')),fmt='bv*[height<=720][vcodec^=avc1]+ba[ext=m4a]/bv*[height<=720]+ba/b[height<=720]/b',
+                  sections=(max(0,c['start']-PAD),c['end']+1),merge_mp4=True)
      return name
     pool=ThreadPoolExecutor(max_workers=3);sections=[pool.submit(section,i,c) for i,c in enumerate(found)]
    else:
@@ -334,7 +332,7 @@ def live_render(sess,start,dur,why,chat_feature):
  o=sess.opts;name=uuid.uuid4().hex;out=DATA/(name+'.mp4');T={};_t=time.time()
  def lap(k):
   nonlocal _t;T[k]=round(time.time()-_t,1);_t=time.time()
- for enc in (['-c:v','h264_nvenc','-preset','p4','-cq','21'],['-c:v','libx264','-preset','veryfast','-crf','21']):
+ for enc in encoders.export(fast=True):
   r=subprocess.run(['ffmpeg','-y','-v','error','-ss',f'{start:.2f}','-i',str(sess.rec),'-t',f'{dur:.2f}',*enc,'-c:a','aac','-b:a','160k',str(out)],capture_output=True,text=True)
   if r.returncode==0 and out.exists() and out.stat().st_size>10000:break
  else:raise RuntimeError('Could not cut the clip from the recording: '+r.stderr[-150:])
@@ -420,13 +418,13 @@ def live_stop(lid:str):
 
 @app.get('/donate')
 def donate():
- """Optional donate links (donate.json or NEONCLIPPING_DONATE_RAZORPAY / NEONCLIPPING_DONATE_PAYPAL). Only https links are served; nothing is unlocked by donating."""
+ """Optional donate links (donate.json or SHORTCIRCUIT_DONATE_RAZORPAY / SHORTCIRCUIT_DONATE_PAYPAL). Only https links are served; nothing is unlocked by donating."""
  cfg={}
  try:cfg=json.loads((ROOT/'donate.json').read_text(encoding='utf-8'))
  except (OSError,ValueError):pass
  out={}
  for k in ('razorpay','paypal'):
-  v=str(os.environ.get('NEONCLIPPING_DONATE_'+k.upper()) or cfg.get(k) or '').strip()
+  v=str(os.environ.get('SHORTCIRCUIT_DONATE_'+k.upper()) or cfg.get(k) or '').strip()
   if v.startswith('https://') and len(v)<300 and ' ' not in v:out[k]=v
  return out
 
@@ -473,4 +471,4 @@ facecam_detect.attach(app,DATA)
 import creators
 creators.attach(app,DATA,LIVE,lambda target,opts,cid:start_live(target,opts,cid))
 
-if __name__=='__main__':uvicorn.run(app,host='127.0.0.1',port=int(os.environ.get('NEONCLIPPING_PORT','8770')))
+if __name__=='__main__':uvicorn.run(app,host='127.0.0.1',port=int(os.environ.get('SHORTCIRCUIT_PORT','8770')))

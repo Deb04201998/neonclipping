@@ -1,4 +1,4 @@
-"""NeonClipping end-to-end test matrix. Runs against the live server (default http://127.0.0.1:8770).
+"""ShortCircuit end-to-end test matrix. Runs against the live server (default http://127.0.0.1:8770).
 
     python tests/e2e.py static export edit feedback creators   # pick groups, or no argument = all light groups
     python tests/e2e.py make                                   # heavy: real downloads + transcription
@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / 'data'
 OUT = Path(__file__).resolve().parent / 'out'
 OUT.mkdir(exist_ok=True)
-BASE = os.environ.get('NEONCLIPPING_URL', 'http://127.0.0.1:8770')
+BASE = os.environ.get('SHORTCIRCUIT_URL', 'http://127.0.0.1:8770')
 REPORT = Path(__file__).resolve().parent / 'report.json'
 
 

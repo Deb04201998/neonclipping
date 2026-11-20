@@ -1,4 +1,4 @@
-// NeonClipping extras: style panel, caption animation, SRT/ASS import, facecam finder, AI parts.
+// ShortCircuit extras: style panel, caption animation, SRT/ASS import, facecam finder, AI parts.
 // Loaded after app.js. It only adds to the page and wraps request()/exportSettings()/openSavedClip(); app.js stays as it is.
 (function () {
   const $ = id => document.getElementById(id);

@@ -9,8 +9,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from e2e import R
 
-SITES = ['https://iamajmeena.github.io/neonclipping/', 'https://editorsgurukul.com/neonclipping/']
-UA = {'User-Agent': 'Mozilla/5.0 NeonClipping-linktest'}
+SITES = ['https://iamajmeena.github.io/neonclipping/', 'https://editorsgurukul.com/shortcircuit/']
+UA = {'User-Agent': 'Mozilla/5.0 ShortCircuit-linktest'}
 
 
 def get(url, method='GET', timeout=40):
@@ -61,7 +61,7 @@ def run():
             continue
         html = body.decode('utf-8', 'ignore')
         R.check(g, f'{site} has title, download button, demo video', lambda html=html: (
-            '<title>' in html and 'NeonClipping-Setup.bat' in html and '<video' in html, ''))
+            '<title>' in html and 'ShortCircuit-Setup.bat' in html and '<video' in html, ''))
         for u in links(html, site):
             host = u.split('/')[2]
             if host in ('www.instagram.com',):          # login walls answer 200/302/429 inconsistently
@@ -85,7 +85,7 @@ def run():
     # release assets
     rel = json.loads(get('https://api.github.com/repos/iamajmeena/neonclipping/releases/latest')[1] or b'{}')
     names = {x['name'] for x in rel.get('assets', [])}
-    for need in ('NeonClipping-Setup.bat', 'install.ps1', 'install.sh', 'NeonClipping-Guide-EN-HI.pdf', 'NEONCLIPPING-AGENT-SETUP-PROMPT.txt'):
+    for need in ('ShortCircuit-Setup.bat', 'install.ps1', 'install.sh', 'ShortCircuit-Guide-EN-HI.pdf', 'SHORTCIRCUIT-AGENT-SETUP-PROMPT.txt'):
         R.check(g, f'release asset {need}', lambda need=need: (need in names, sorted(names)))
     code = get('https://github.com/iamajmeena/neonclipping/releases/latest/download/NeonClipping-Setup.bat')[0]
     R.check(g, 'one-click download URL resolves', lambda: (code == 200, code))
@@ -102,12 +102,12 @@ def run():
     R.check(g, 'agent prompt has the 9 steps + simple-Hindi explanation + stop rules', lambda: (
         len(t) > 4000 and 'Hindi' in t and 'Step 9' in t or 'STEP 9' in t, len(t)))
     # editorsgurukul integration
-    for u, needle in (('https://editorsgurukul.com/free-resources', 'neonclipping'), ('https://editorsgurukul.com/free-websites/', 'neonclipping'),
-                      ('https://editorsgurukul.com/free-websites/neonclipping/', 'NeonClipping')):
+    for u, needle in (('https://editorsgurukul.com/free-resources', 'shortcircuit'), ('https://editorsgurukul.com/free-websites/', 'shortcircuit'),
+                      ('https://editorsgurukul.com/free-websites/shortcircuit/', 'ShortCircuit')):
         code, body, _ = get(u)
-        R.check(g, f'{u} lists NeonClipping', lambda code=code, body=body, needle=needle: (code == 200 and needle.lower() in body.decode('utf-8', 'ignore').lower(), code))
+        R.check(g, f'{u} lists ShortCircuit', lambda code=code, body=body, needle=needle: (code == 200 and needle.lower() in body.decode('utf-8', 'ignore').lower(), code))
     sm = get('https://editorsgurukul.com/sitemap-0.xml')[1].decode('utf-8', 'ignore')
-    R.check(g, 'sitemap lists /neonclipping/', lambda: ('/neonclipping/' in sm, ''))
+    R.check(g, 'sitemap lists /shortcircuit/', lambda: ('/shortcircuit/' in sm, ''))
 
 
 if __name__ == '__main__':

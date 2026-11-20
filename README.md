@@ -1,21 +1,21 @@
-# NeonClipping
+# ShortCircuit Clipping
 
 **Paste a link. Get captioned 9:16 clips in about two minutes. Free, local, open-source.**
 
-NeonClipping turns long YouTube / Twitch / Kick videos (or your own MP4) into vertical, captioned clips with a title and hook for each. Everything runs on your machine: no account, no subscription, no upload.
+ShortCircuit Clipping turns long YouTube / Twitch / Kick videos (or your own MP4) into vertical, captioned clips with a title and hook for each. Everything runs on your machine: no account, no subscription, no upload.
 
 [![Star on GitHub](https://img.shields.io/github/stars/iamajmeena/neonclipping?style=for-the-badge&logo=github&label=Star%20on%20GitHub)](https://github.com/iamajmeena/neonclipping) [![Instagram](https://img.shields.io/badge/Follow-%40iamajmeena-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://www.instagram.com/iamajmeena/)
 
 🌐 **Website with one-click Windows setup:** <https://iamajmeena.github.io/neonclipping/>
 
-**Made by [Ajay K Meena](https://www.instagram.com/iamajmeena/)** (Director, DOP, colorist, DaVinci Resolve educator, Jaipur). If NeonClipping saves you time, please ⭐ star the repo and follow [@iamajmeena](https://www.instagram.com/iamajmeena/) on Instagram.
+**Made by [Ajay K Meena](https://www.instagram.com/iamajmeena/)** (Director, DOP, colorist, DaVinci Resolve educator, Jaipur). If ShortCircuit saves you time, please ⭐ star the repo and follow [@iamajmeena](https://www.instagram.com/iamajmeena/) on Instagram.
 
 ![demo](docs/demo.gif)
 
-![UI](docs/neonclipping-ui.jpg)
+![UI](docs/shortcircuit-ui.jpg)
 
-📘 **Guides (Hindi + English, PDF):** [docs/NeonClipping-Guide-EN-HI.pdf](docs/NeonClipping-Guide-EN-HI.pdf)  
-🤖 **Let an AI agent install it for you:** copy [docs/NEONCLIPPING-AGENT-SETUP-PROMPT.txt](docs/NEONCLIPPING-AGENT-SETUP-PROMPT.txt) into Claude Code, Codex CLI or Cursor.
+📘 **Guides (Hindi + English, PDF):** [docs/ShortCircuit-Guide-EN-HI.pdf](docs/ShortCircuit-Guide-EN-HI.pdf)  
+🤖 **Let an AI agent install it for you:** copy [docs/SHORTCIRCUIT-AGENT-SETUP-PROMPT.txt](docs/SHORTCIRCUIT-AGENT-SETUP-PROMPT.txt) into Claude Code, Codex CLI or Cursor.
 
 ## How it finds good moments
 
@@ -86,13 +86,13 @@ Run the portable regression tests with `python -m unittest discover -s tests -v`
 
 ## Install
 
-**Easiest (Windows):** download [`NeonClipping-Setup.bat`](https://github.com/iamajmeena/neonclipping/releases/latest/download/NeonClipping-Setup.bat) from the [website](https://iamajmeena.github.io/neonclipping/) or the Releases page and double-click it. It checks your PC, installs Python and FFmpeg if missing, installs NeonClipping into `%LOCALAPPDATA%\NeonClipping`, creates a Desktop shortcut and opens the app. Mac/Linux: `install.sh` (new, not yet tested on a real Mac). Or follow the steps below.
+**Easiest (Windows):** download [`ShortCircuit-Setup.bat`](https://github.com/iamajmeena/neonclipping/releases/latest/download/NeonClipping-Setup.bat) from the [website](https://iamajmeena.github.io/neonclipping/) or the Releases page and double-click it. It checks your PC, installs Python and FFmpeg if missing, installs ShortCircuit into `%LOCALAPPDATA%\ShortCircuit`, creates a Desktop shortcut and opens the app. Mac/Linux: `install.sh` (new, not yet tested on a real Mac). Or follow the steps below.
 
 Requirements: Python 3.10+, FFmpeg on PATH. Optional but recommended: [Ollama](https://ollama.com) with `ollama pull llama3.2:3b` for AI titles, hooks and scores (without it clips are picked by the audio/motion score), and an NVIDIA GPU for NVENC and faster-whisper.
 
 ```bash
 git clone https://github.com/iamajmeena/neonclipping
-cd neonclipping
+cd shortcircuit
 # Windows
 ./run.ps1
 # Linux / macOS
@@ -107,7 +107,7 @@ Optional GPU speech model support (only used when a video has no YouTube caption
 .venv/bin/pip install nvidia-cublas-cu12 "nvidia-cudnn-cu12==9.*"
 ```
 
-Set `NEONCLIPPING_CPU=1` to force CPU. Set `NEONCLIPPING_PORT=9000` to use another port.
+Set `SHORTCIRCUIT_CPU=1` to force CPU. Set `SHORTCIRCUIT_PORT=9000` to use another port.
 
 ## How it is built
 
@@ -123,16 +123,16 @@ Set `NEONCLIPPING_CPU=1` to force CPU. Set `NEONCLIPPING_PORT=9000` to use anoth
 
 ## Live clipping (while the stream is on)
 
-Paste a Twitch channel link or a YouTube Live link into the **Live clipping** panel and press Start. NeonClipping records the stream (Streamlink), reads chat anonymously, counts messages in 10 s buckets and cuts a clip around every chat spike (chat velocity more than 2.5 sigma and 2.5x the 5-minute baseline). The clip starts about 24 s *before* the spike, because chat reacts after the moment. It then gets captions, a hook and title, your layout and facecam boxes, and a viral score like any other clip. **Clip the last 30 s now** cuts on demand, **Stop** ends the session. It only works while the stream is live; for finished videos use Make clips.
+Paste a Twitch channel link or a YouTube Live link into the **Live clipping** panel and press Start. ShortCircuit records the stream (Streamlink), reads chat anonymously, counts messages in 10 s buckets and cuts a clip around every chat spike (chat velocity more than 2.5 sigma and 2.5x the 5-minute baseline). The clip starts about 24 s *before* the spike, because chat reacts after the moment. It then gets captions, a hook and title, your layout and facecam boxes, and a viral score like any other clip. **Clip the last 30 s now** cuts on demand, **Stop** ends the session. It only works while the stream is live; for finished videos use Make clips.
 
 There is also a command-line version in `live/live_clip.py`.
 
 ## Creators (clip a streamer automatically)
 
-Add a Twitch name or a Twitch / YouTube channel link in the **Creators** panel. NeonClipping checks every minute; when that creator goes live it records the stream and clips the chat spikes, using the layout, facecam boxes and caption style you had selected when you added them (“Use my current layout” updates it). Clips appear under the creator and in My clips.
+Add a Twitch name or a Twitch / YouTube channel link in the **Creators** panel. ShortCircuit checks every minute; when that creator goes live it records the stream and clips the chat spikes, using the layout, facecam boxes and caption style you had selected when you added them (“Use my current layout” updates it). Clips appear under the creator and in My clips.
 
 - One stream at a time (recording and rendering are heavy); other creators wait their turn.
-- NeonClipping must stay open. Unattended recordings stop after 3 hours (a new one starts if the creator is still live), stop when less than 8 GB of disk is free, and the big recording file is deleted after the last clip is cut.
+- ShortCircuit must stay open. Unattended recordings stop after 3 hours (a new one starts if the creator is still live), stop when less than 8 GB of disk is free, and the big recording file is deleted after the last clip is cut.
 - Pressing **Stop** pauses that creator for 30 minutes; switching Auto off and on resumes at once.
 - Tested on Twitch (recording, chat spikes, clip, feed). YouTube channels are detected through yt-dlp; an auto-clipped YouTube stream was not run end to end.
 
@@ -165,7 +165,7 @@ The **Find my facecam** chip (or "find it automatically when I press Make clips"
 
 ## Long streams with a free chatbot
 
-**AI parts** (below step 01): paste a YouTube link, NeonClipping splits the video's captions into ~25-minute parts and gives a copy-ready prompt per part. Paste each into any free chatbot, paste all answers back (JSON or lines like `12:30-13:10 title`), tick the moments and press Make clips: only those sections are downloaded and rendered. A chatbot given a 9-hour transcript in one go only reads the start; small parts fix that. Nothing is sent anywhere by NeonClipping; the chatbot step is manual.
+**AI parts** (below step 01): paste a YouTube link, ShortCircuit splits the video's captions into ~25-minute parts and gives a copy-ready prompt per part. Paste each into any free chatbot, paste all answers back (JSON or lines like `12:30-13:10 title`), tick the moments and press Make clips: only those sections are downloaded and rendered. A chatbot given a 9-hour transcript in one go only reads the start; small parts fix that. Nothing is sent anywhere by ShortCircuit; the chatbot step is manual.
 
 ## Honest limits
 
@@ -179,7 +179,7 @@ The **Find my facecam** chip (or "find it automatically when I press Make clips"
 
 ## Support
 
-NeonClipping is free. If it saves you time you can ⭐ star the repo, follow [@iamajmeena](https://www.instagram.com/iamajmeena/), or optionally donate via Razorpay (UPI / cards): <https://rzp.io/rzp/JN41CpW>. The app also has a ♥ Donate button. Nothing is ever locked behind a donation.
+ShortCircuit is free. If it saves you time you can ⭐ star the repo, follow [@iamajmeena](https://www.instagram.com/iamajmeena/), or optionally donate via Razorpay (UPI / cards): <https://rzp.io/rzp/JN41CpW>. The app also has a ♥ Donate button. Nothing is ever locked behind a donation.
 
 ## Credits and inspiration
 
